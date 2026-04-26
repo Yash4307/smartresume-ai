@@ -1,7 +1,22 @@
-__pycache__/
-venv/
+# VS Code settings
+.vscode/
+.vscode/*
+!.vscode/settings.json   # Optional: keep settings.json if you want to share interpreter config
+
+# Environment
 .env
+
+# Python
+__pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+ENV/
+env/
+myenv/
+
+# OS
 .DS_Store
-data/*.pdf
-*.log
+Thumbs.db
