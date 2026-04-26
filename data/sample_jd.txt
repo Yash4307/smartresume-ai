@@ -1,0 +1,4 @@
+We are looking for a Senior Python Developer with strong experience in building web applications using Flask and FastAPI. 
+The ideal candidate should have hands-on experience with LLM integration, RAG pipelines, and prompt engineering. 
+Key requirements include proficiency in Python 3.10+, experience with vector databases, and the ability to work with Groq and Hugging Face models. 
+Strong communication skills and a passion for AI/ML are highly desired.
