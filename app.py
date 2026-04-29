@@ -50,19 +50,9 @@ def analyze_resume(resume_file, job_description):
 
         # Polished Cover Letter
         cover_letter_prompt = f"""Write a professional, compelling cover letter (280-350 words) based on:
-
-Resume:
-{resume_text[:2500]}
-
-Job Description:
-{job_description}
-
-Requirements:
-- Be enthusiastic and confident
-- Highlight the most relevant experience and skills
-- Make it personalized
-- End with a strong call to action"""
-
+Resume: {resume_text[:2500]}
+Job Description: {job_description}
+"""
         cover_response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": cover_letter_prompt}],
@@ -70,18 +60,18 @@ Requirements:
             max_tokens=600
         )
         cover_letter = cover_response.choices[0].message.content
-
         return analysis, tailored_resume, tailored_resume, cover_letter
 
     except Exception as e:
         error_msg = f"❌ Error: {str(e)}"
         return error_msg, error_msg, None, None
 
-# ================== DARK THEME CONFIG ==================
+# ================== THE THEME FIX ==================
 
-# JavaScript to force dark mode on Hugging Face Spaces
+# 1. JS to force the internal Gradio state to dark mode
 js_func = """
 function() {
+    document.documentElement.classList.add('dark');
     const url = new URL(window.location);
     url.searchParams.set('__theme', 'dark');
     window.history.replaceState({}, '', url);
@@ -94,32 +84,39 @@ with gr.Blocks(
     js=js_func
 ) as demo:
     
-    # Custom CSS updated for modern Gradio versions
+    # 2. CSS that overrides the specific Gradio Variables
     gr.HTML("""
     <style>
-        /* Force dark background for the entire container */
-        .gradio-container {
-            background-color: #0a0f1c !important;
-            color: #e0f2fe !important;
+        /* Force dark mode variables even if the parent says light */
+        :root, .dark, body {
+            --body-background-fill: #0a0f1c !important;
+            --block-background-fill: #111827 !important;
+            --block-border-color: #10b981 !important;
+            --input-background-fill: #1f2937 !important;
+            --body-text-color: #e0f2fe !important;
+            --heading-text-color: #67e8f9 !important;
         }
+
+        /* Container & Global styles */
+        .gradio-container { background-color: #0a0f1c !important; }
         
-        /* Headers and Text visibility */
-        .prose h1, .prose h2, .prose p, .prose strong {
+        /* Ensure all text is visible */
+        .prose h1, .prose h2, .prose p, label span {
             color: #67e8f9 !important;
         }
 
-        /* Input fields and Cards */
-        .block, .form, .gr-box, .border-gray-200, textarea, input {
-            background-color: #111827 !important;
+        /* Input specific styling */
+        textarea, input {
+            background-color: #1f2937 !important;
             color: #e0f2fe !important;
-            border-color: #10b981 !important;
+            border: 1px solid #10b981 !important;
         }
 
-        /* Buttons styling */
+        /* Button Styling */
         button.primary {
             background: linear-gradient(90deg, #10b981, #059669) !important;
-            border: none !important;
             color: white !important;
+            border: none !important;
         }
         
         button.secondary {
@@ -127,12 +124,8 @@ with gr.Blocks(
             color: #67e8f9 !important;
             border: 1px solid #67e8f9 !important;
         }
-        
-        /* Fix label text colors */
-        label span {
-            color: #67e8f9 !important;
-            font-weight: bold;
-        }
+
+        footer { display: none !important; }
     </style>
     """)
     
@@ -161,39 +154,23 @@ with gr.Blocks(
 
     def process_resume(resume_file, job_description):
         analysis, tailored_text, _, cover_letter = analyze_resume(resume_file, job_description)
-        
         if tailored_text and "Error" not in tailored_text:
             with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as tmp:
                 tmp.write(f"Tailored Resume\n\n{tailored_text}")
                 tmp_path = tmp.name
             return analysis, tailored_text, tmp_path, cover_letter
-        else:
-            return analysis, tailored_text, None, cover_letter
+        return analysis, tailored_text, None, cover_letter
 
     def load_sample():
-        sample_jd = "We are looking for a Senior Python Developer with strong experience in building web applications using Flask and FastAPI. The ideal candidate should have hands-on experience with LLM integration, RAG pipelines, and prompt engineering."
+        sample_jd = "We are looking for a Senior Python Developer with experience in LLM integration and RAG pipelines."
         return None, sample_jd
 
     def clear_fields():
         return None, "", "", None, ""
 
-    analyze_btn.click(
-        process_resume,
-        inputs=[resume_input, job_input],
-        outputs=[match_output, tailored_output, download_output, cover_letter_output]
-    )
-
-    example_btn.click(
-        load_sample,
-        inputs=[],
-        outputs=[resume_input, job_input]
-    )
-
-    clear_btn.click(
-        clear_fields,
-        inputs=[],
-        outputs=[resume_input, job_input, match_output, download_output, cover_letter_output]
-    )
+    analyze_btn.click(process_resume, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
+    example_btn.click(load_sample, outputs=[resume_input, job_input])
+    clear_btn.click(clear_fields, outputs=[resume_input, job_input, match_output, download_output, cover_letter_output])
 
     gr.Markdown("---\nBuilt with Groq + RAG • Educational Portfolio Project")
 
