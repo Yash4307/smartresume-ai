@@ -49,10 +49,7 @@ def analyze_resume(resume_file, job_description):
         tailored_resume = tailored_response.choices[0].message.content
 
         # Polished Cover Letter
-        cover_letter_prompt = f"""Write a professional, compelling cover letter (280-350 words) based on:
-Resume: {resume_text[:2500]}
-Job Description: {job_description}
-"""
+        cover_letter_prompt = f"Write a professional cover letter based on:\nResume: {resume_text[:2000]}\nJD: {job_description}"
         cover_response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": cover_letter_prompt}],
@@ -63,68 +60,66 @@ Job Description: {job_description}
         return analysis, tailored_resume, tailored_resume, cover_letter
 
     except Exception as e:
-        error_msg = f"❌ Error: {str(e)}"
-        return error_msg, error_msg, None, None
+        return f"❌ Error: {str(e)}", "Error", None, None
 
-# ================== THE THEME FIX ==================
+# ================== GRADIO 5 DARK THEME FIX ==================
 
-# 1. JS to force the internal Gradio state to dark mode
+# Force the __theme parameter and the .dark class
 js_func = """
 function() {
-    document.documentElement.classList.add('dark');
     const url = new URL(window.location);
-    url.searchParams.set('__theme', 'dark');
-    window.history.replaceState({}, '', url);
+    if (url.searchParams.get('__theme') !== 'dark') {
+        url.searchParams.set('__theme', 'dark');
+        window.history.replaceState({}, '', url);
+    }
+    document.documentElement.classList.add('dark');
+    document.body.classList.add('dark');
 }
 """
 
 with gr.Blocks(
     title="SmartResume AI",
-    theme=gr.themes.Base(),
+    # Gradio 5 allows specifying mode directly in many theme subclasses
+    theme=gr.themes.Base(
+        primary_hue="emerald", 
+        secondary_hue="slate",
+        neutral_hue="slate",
+    ),
     js=js_func
 ) as demo:
     
-    # 2. CSS that overrides the specific Gradio Variables
     gr.HTML("""
     <style>
-        /* Force dark mode variables even if the parent says light */
-        :root, .dark, body {
+        /* Global Background Fix */
+        :root, .dark, body, .gradio-container {
+            background-color: #0a0f1c !important;
             --body-background-fill: #0a0f1c !important;
             --block-background-fill: #111827 !important;
-            --block-border-color: #10b981 !important;
             --input-background-fill: #1f2937 !important;
-            --body-text-color: #e0f2fe !important;
-            --heading-text-color: #67e8f9 !important;
+            --border-color-primary: #10b981 !important;
         }
 
-        /* Container & Global styles */
-        .gradio-container { background-color: #0a0f1c !important; }
-        
-        /* Ensure all text is visible */
-        .prose h1, .prose h2, .prose p, label span {
+        /* Text and Heading Colors */
+        .prose h1, .prose h2, .prose p, .markdown-text {
             color: #67e8f9 !important;
         }
-
-        /* Input specific styling */
+        
+        /* Input & Textbox specific overrides */
         textarea, input {
             background-color: #1f2937 !important;
             color: #e0f2fe !important;
             border: 1px solid #10b981 !important;
         }
 
-        /* Button Styling */
+        /* Primary Button: Cyber Emerald */
         button.primary {
             background: linear-gradient(90deg, #10b981, #059669) !important;
             color: white !important;
             border: none !important;
-        }
-        
-        button.secondary {
-            background-color: #1f2937 !important;
-            color: #67e8f9 !important;
-            border: 1px solid #67e8f9 !important;
+            font-weight: bold !important;
         }
 
+        /* Footer removal */
         footer { display: none !important; }
     </style>
     """)
@@ -152,6 +147,7 @@ with gr.Blocks(
     download_output = gr.File(label="Download Tailored Resume (.txt)", visible=True)
     cover_letter_output = gr.Textbox(label="📧 Generated Cover Letter", lines=12)
 
+    # Logic functions
     def process_resume(resume_file, job_description):
         analysis, tailored_text, _, cover_letter = analyze_resume(resume_file, job_description)
         if tailored_text and "Error" not in tailored_text:
@@ -162,12 +158,12 @@ with gr.Blocks(
         return analysis, tailored_text, None, cover_letter
 
     def load_sample():
-        sample_jd = "We are looking for a Senior Python Developer with experience in LLM integration and RAG pipelines."
-        return None, sample_jd
+        return None, "Looking for a Senior Developer with Python and RAG experience."
 
     def clear_fields():
         return None, "", "", None, ""
 
+    # Interactivity
     analyze_btn.click(process_resume, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
     example_btn.click(load_sample, outputs=[resume_input, job_input])
     clear_btn.click(clear_fields, outputs=[resume_input, job_input, match_output, download_output, cover_letter_output])
