@@ -77,36 +77,61 @@ Requirements:
         error_msg = f"❌ Error: {str(e)}"
         return error_msg, error_msg, None, None
 
+# ================== DARK THEME CONFIG ==================
 
-# ================== DARK CYBER THEME ==================
+# JavaScript to force dark mode on Hugging Face Spaces
+js_func = """
+function() {
+    const url = new URL(window.location);
+    url.searchParams.set('__theme', 'dark');
+    window.history.replaceState({}, '', url);
+}
+"""
+
 with gr.Blocks(
     title="SmartResume AI",
-    theme=gr.themes.Base()
+    theme=gr.themes.Base(),
+    js=js_func
 ) as demo:
     
-    # Custom CSS for dark cyber theme
+    # Custom CSS updated for modern Gradio versions
     gr.HTML("""
     <style>
-        body, .gradio-container {
+        /* Force dark background for the entire container */
+        .gradio-container {
             background-color: #0a0f1c !important;
             color: #e0f2fe !important;
         }
-        .block {
-            background-color: #111827 !important;
-            border-color: #10b981 !important;
-        }
-        h1, h2, h3 {
+        
+        /* Headers and Text visibility */
+        .prose h1, .prose h2, .prose p, .prose strong {
             color: #67e8f9 !important;
         }
-        .gr-button-primary {
-            background-color: #10b981 !important;
-        }
-        .gr-button-primary:hover {
-            background-color: #34d399 !important;
-        }
-        .textbox, .file {
-            background-color: #1f2937 !important;
+
+        /* Input fields and Cards */
+        .block, .form, .gr-box, .border-gray-200, textarea, input {
+            background-color: #111827 !important;
             color: #e0f2fe !important;
+            border-color: #10b981 !important;
+        }
+
+        /* Buttons styling */
+        button.primary {
+            background: linear-gradient(90deg, #10b981, #059669) !important;
+            border: none !important;
+            color: white !important;
+        }
+        
+        button.secondary {
+            background-color: #1f2937 !important;
+            color: #67e8f9 !important;
+            border: 1px solid #67e8f9 !important;
+        }
+        
+        /* Fix label text colors */
+        label span {
+            color: #67e8f9 !important;
+            font-weight: bold;
         }
     </style>
     """)
@@ -115,7 +140,7 @@ with gr.Blocks(
 
     with gr.Row():
         with gr.Column(scale=1):
-            resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"], type="binary")
+            resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
             job_input = gr.Textbox(label="Paste Job Description", lines=8, placeholder="Paste the full job description here...")
 
         with gr.Column(scale=1):
