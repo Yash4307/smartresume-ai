@@ -12,7 +12,8 @@ from utils.prompts import get_analysis_prompt, get_tailored_resume_prompt
 
 def analyze_resume(resume_file, job_description):
     if resume_file is None or not job_description:
-        return "❌ Missing input.", "Error", None, None
+        return "❌ Missing input.", "No resume or job description provided.", None, "Error"
+    
     try:
         if hasattr(resume_file, 'name') and resume_file.name.lower().endswith('.pdf'):
             resume_text = extract_text_from_pdf(resume_file)
@@ -21,114 +22,87 @@ def analyze_resume(resume_file, job_description):
         
         context = build_rag_context(resume_text, job_description)
         
+        # 1. Match Analysis
         analysis_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": get_analysis_prompt(resume_text, job_description, context)}]
         )
         analysis = analysis_res.choices[0].message.content
 
+        # 2. Tailored Resume
         tailored_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": get_tailored_resume_prompt(resume_text, job_description)}]
         )
         tailored_resume = tailored_res.choices[0].message.content
 
+        # 3. Cover Letter
         cover_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": f"Write a cover letter for:\n{resume_text[:1000]}"}]
+            messages=[{"role": "user", "content": f"Write a professional cover letter for the following resume and job description:\n\nResume: {resume_text[:1500]}\n\nJD: {job_description}"}]
         )
         cover_letter = cover_res.choices[0].message.content
 
-        return analysis, tailored_resume, tailored_resume, cover_letter
+        # Save tailored resume to a temp file for download
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as tmp:
+            tmp.write(tailored_resume)
+            tmp_path = tmp.name
+
+        return analysis, tailored_resume, tmp_path, cover_letter
     except Exception as e:
-        return f"❌ {str(e)}", "Error", None, None
+        return f"❌ {str(e)}", "An error occurred during generation.", None, "Error"
 
-# ================== THE BRUTE-FORCE CSS FIX ==================
-
-with gr.Blocks(title="SmartResume AI", theme=gr.themes.Default()) as demo:
+# --- UI Setup ---
+with gr.Blocks(title="SmartResume AI", theme=gr.themes.Soft(primary_hue="emerald")) as demo:
     
-    gr.HTML("""
-    <style>
-        /* Force dark mode colors for Gradio 5 components */
-        :root, body, .gradio-container {
-            --body-background-fill: #0a0f1c !important;
-            --block-background-fill: #111827 !important;
-            --input-background-fill: #1f2937 !important;
-            --body-text-color: #ffffff !important;
-            --heading-text-color: #67e8f9 !important;
-            --block-label-text-color: #67e8f9 !important;
-            --border-color-primary: #f97316 !important;
-            background-color: #0a0f1c !important;
-        }
-
-        /* Fix Title and Subtitle visibility */
-        .prose h1, .prose h2, .prose h3, .prose p, h1, h2, h3 {
-            color: #67e8f9 !important;
-            visibility: visible !important;
-        }
-
-        /* Target the Labels (Upload Resume, Job Description, etc.) */
-        .block span, label span, .block-label {
-            color: #ffffff !important;
-            font-weight: bold !important;
-            opacity: 1 !important;
-        }
-
-        /* Target Textbox content and placeholder text */
-        textarea, input {
-            color: #ffffff !important;
-            background-color: #1f2937 !important;
-        }
+    with gr.Row():
+        with gr.Column(scale=1):
+            gr.Markdown("# 📄 SmartResume AI")
+            gr.Markdown("### Optimize your job search with RAG-powered AI.")
         
-        textarea::placeholder, input::placeholder {
-            color: #94a3b8 !important;
-        }
+    with gr.Sidebar():
+        gr.Markdown("## 🛠️ Inputs")
+        resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
+        job_input = gr.Textbox(label="Job Description", lines=10, placeholder="Paste the full job description here...")
+        
+        analyze_btn = gr.Button("🚀 Analyze & Generate", variant="primary")
+        
+        with gr.Row():
+            example_btn = gr.Button("Sample Data", variant="secondary")
+            clear_btn = gr.Button("Clear All", variant="stop")
 
-        /* High-contrast buttons */
-        button.primary {
-            background-color: #f97316 !important;
-            color: white !important;
-            border: none !important;
-        }
-    </style>
-    """)
+    with gr.Column():
+        with gr.Tabs():
+            with gr.TabItem("📊 Match Analysis"):
+                match_output = gr.Textbox(label="Gap Analysis & Suggestions", lines=20, show_copy_button=True)
+                
+            with gr.TabItem("📝 Tailored Resume"):
+                tailored_output = gr.Textbox(label="AI-Optimized Resume", lines=20, show_copy_button=True)
+                download_output = gr.File(label="Download Resume (.txt)")
+                
+            with gr.TabItem("📧 Cover Letter"):
+                cover_letter_output = gr.Textbox(label="Generated Cover Letter", lines=20, show_copy_button=True)
+
+    # --- Footer ---
+    gr.Markdown("---")
+    gr.Markdown("Built with **Groq + Llama 3.1** • RAG Pipeline • Educational Portfolio Project")
+
+    # --- Functions ---
+    def load_sample():
+        sample_jd = "We are looking for a Senior Developer with Python, RAG, and AI integration experience."
+        return None, sample_jd
+
+    def clear_all():
+        return None, "", "", "", None, ""
+
+    analyze_btn.click(
+        analyze_resume, 
+        [resume_input, job_input], 
+        [match_output, tailored_output, download_output, cover_letter_output]
+    )
     
-    gr.Markdown("# SmartResume AI")
-    gr.Markdown("### AI Resume Builder & Job Matcher with RAG")
-
-    with gr.Row():
-        with gr.Column():
-            resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
-            job_input = gr.Textbox(label="Paste Job Description", lines=8, placeholder="Paste the full job description here...")
-        with gr.Column():
-            analyze_btn = gr.Button("🚀 Analyze & Generate Tailored Resume", variant="primary", size="large")
-
-    with gr.Row():
-        example_btn = gr.Button("Load Sample Data", variant="secondary")
-        clear_btn = gr.Button("Clear All", variant="stop")
-
-    with gr.Row():
-        match_output = gr.Textbox(label="Match Analysis & Gap Suggestions", lines=13)
-        tailored_output = gr.Textbox(label="Tailored Resume", lines=13)
-
-    download_output = gr.File(label="Download Tailored Resume (.txt)", visible=True)
-    cover_letter_output = gr.Textbox(label="📧 Generated Cover Letter", lines=12)
-
-    def wrap_process(resume, jd):
-        analysis, tailored, _, cover = analyze_resume(resume, jd)
-        if tailored and "Error" not in tailored:
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-                f.write(tailored)
-                return analysis, tailored, f.name, cover
-        return analysis, tailored, None, cover
-
-    analyze_btn.click(wrap_process, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
-    
-    example_btn.click(lambda: (None, "Sample JD: Senior Python Developer."), None, [resume_input, job_input])
-    
-    clear_btn.click(lambda: (None, "", "", None, ""), None, [resume_input, job_input, match_output, download_output, cover_letter_output])
-
-    gr.Markdown("Built with Groq + RAG • Educational Portfolio Project")
+    example_btn.click(load_sample, outputs=[resume_input, job_input])
+    clear_btn.click(clear_all, outputs=[resume_input, job_input, match_output, tailored_output, download_output, cover_letter_output])
 
 if __name__ == "__main__":
     demo.launch()
