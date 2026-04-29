@@ -39,64 +39,55 @@ def analyze_resume(resume_file, job_description):
     except Exception as e:
         return f"❌ Error: {str(e)}", "Error", None, None
 
-# ================== THE "FORCE DARK" SOLUTION ==================
+# ================== CSS FORCE FIX ==================
 
 with gr.Blocks(
     title="SmartResume AI",
     theme=gr.themes.Default() 
 ) as demo:
     
-    # This CSS targets the specific Gradio 5 variables that are causing the 'ghosting'
     gr.HTML("""
     <style>
-        /* Force the background and primary text colors at the highest level */
-        :root, .dark, body, html, .gradio-container {
-            --body-background-fill: #0a0f1c !important;
-            --background-fill-primary: #0a0f1c !important;
-            --background-fill-secondary: #111827 !important;
-            --block-background-fill: #111827 !important;
-            --input-background-fill: #1f2937 !important;
-            
-            --body-text-color: #e0f2fe !important;
-            --heading-text-color: #67e8f9 !important;
-            --block-label-text-color: #67e8f9 !important;
-            --body-text-color-subdued: #94a3b8 !important;
-            
-            --border-color-primary: #f97316 !important;
-            --button-primary-background-fill: #f97316 !important;
-            
+        /* 1. Force the page background to be dark */
+        body, .gradio-container {
             background-color: #0a0f1c !important;
         }
 
-        /* Fix invisible Titles */
-        h1, h2, h3, .prose h1, .prose h2, .prose h3, .prose p {
+        /* 2. Force Title and Subtitle to be Bright Cyan */
+        h1, h2, h3, .prose h1, .prose h2, .prose h3 {
             color: #67e8f9 !important;
+            text-align: center;
         }
 
-        /* Fix invisible Labels (the most common issue in your screenshot) */
-        .block span, label span, .block-label {
-            color: #67e8f9 !important;
+        /* 3. Force Labels (Upload Resume, Job Description) to be White */
+        label span, .block-label, .sr-only + span {
+            color: #ffffff !important;
             font-weight: bold !important;
+            font-size: 1.1rem !important;
         }
 
-        /* Fix the Input Text (currently appearing as black on dark) */
-        textarea, input, .scroll-hide {
+        /* 4. Force Input Text visibility */
+        textarea, input {
             color: #ffffff !important;
             background-color: #1f2937 !important;
+            border: 1px solid #374151 !important;
         }
 
-        /* Primary Action Button */
+        /* 5. Force Footer and small text to be Cyan */
+        p, .markdown-text, .footer-text {
+            color: #67e8f9 !important;
+        }
+
+        /* 6. Fix the "Built with Gradio" area */
+        footer {
+            display: none !important;
+        }
+
+        /* 7. Button Styling */
         button.primary {
             background: linear-gradient(90deg, #f97316, #ea580c) !important;
             color: white !important;
             border: none !important;
-            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3) !important;
-        }
-        
-        /* Secondary Buttons */
-        button.secondary {
-            background-color: #1f2937 !important;
-            color: white !important;
         }
     </style>
     """)
@@ -134,7 +125,7 @@ with gr.Blocks(
         return analysis, tailored_text, None, cover_letter
 
     analyze_btn.click(process_resume, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
-    example_btn.click(lambda: (None, "Sample JD: Senior Python Developer experienced in RAG."), None, [resume_input, job_input])
+    example_btn.click(lambda: (None, "Sample JD: Senior Python Developer."), None, [resume_input, job_input])
     clear_btn.click(lambda: (None, "", "", None, ""), None, [resume_input, job_input, match_output, download_output, cover_letter_output])
 
     gr.Markdown("Built with Groq + RAG • Educational Portfolio Project")
