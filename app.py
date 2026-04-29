@@ -59,57 +59,54 @@ def analyze_resume(resume_file, job_description):
     except Exception as e:
         return f"❌ Error: {str(e)}", "Error", None, None
 
-# ================== UI FIX: VISIBLE TEXT FOR WHITE THEME ==================
+# ================== THE ULTIMATE THEME FIX ==================
 
 with gr.Blocks(
     title="SmartResume AI",
-    theme=gr.themes.Soft() # Soft theme handles light mode more gracefully
+    theme=gr.themes.Soft(primary_hue="orange")
 ) as demo:
     
     gr.HTML("""
     <style>
-        /* Force specific text elements to be dark/black so they are visible on white background */
-        
-        /* 1. Main Title and Subtitle */
-        .prose h1, .prose h2, .prose h3 {
-            color: #1a202c !important; /* Dark slate/black */
-            text-align: center;
-        }
-        
-        .prose p, .prose strong {
-            color: #2d3748 !important; /* Dark grey */
-        }
-
-        /* 2. Footer Text */
-        .footer-text p {
-            color: #4a5568 !important;
-            font-weight: 500;
+        /* This targets the internal variables Gradio 5 uses for text and background */
+        :root, .gradio-container {
+            --body-background-fill: #0a0f1c !important; /* Deep Dark Blue */
+            --block-background-fill: #111827 !important; /* Slightly lighter dark */
+            --body-text-color: #e0f2fe !important; /* Off-white text */
+            --heading-text-color: #67e8f9 !important; /* Cyan headers */
+            --block-label-text-color: #67e8f9 !important; /* Cyan labels */
+            --input-background-fill: #1f2937 !important; /* Dark input boxes */
+            --border-color-primary: #f97316 !important; /* Orange borders */
         }
 
-        /* 3. Label Text for inputs */
-        label span {
-            color: #2d3748 !important;
+        /* Direct overrides for the invisible headers in your screenshot */
+        h1, h2, h3, .prose h1, .prose h2, .prose h3 {
+            color: #67e8f9 !important;
+            text-shadow: 0px 0px 5px rgba(103, 232, 249, 0.3);
+        }
+
+        /* Fix the labels like "Upload Resume" and "Job Description" */
+        .block span, label span, .block-label {
+            color: #67e8f9 !important;
             font-weight: bold !important;
         }
 
-        /* Keep your button looking cool - orange/green works on white too */
+        /* Button Styling */
         button.primary {
             background: linear-gradient(90deg, #f97316, #ea580c) !important;
             color: white !important;
             border: none !important;
         }
-        
-        /* Box borders so they don't vanish on white */
-        .block {
-            border: 1px solid #e2e8f0 !important;
+
+        /* Footer visibility */
+        .footer-text p {
+            color: #94a3b8 !important;
         }
     </style>
     """)
     
-    # Using a container for the header to apply custom classes if needed
-    with gr.Column(elem_classes="header-section"):
-        gr.Markdown("# SmartResume AI")
-        gr.Markdown("### AI Resume Builder & Job Matcher with RAG")
+    gr.Markdown("# SmartResume AI")
+    gr.Markdown("### AI Resume Builder & Job Matcher with RAG")
 
     with gr.Row():
         with gr.Column(scale=1):
@@ -132,7 +129,6 @@ with gr.Blocks(
     download_output = gr.File(label="Download Tailored Resume (.txt)", visible=True)
     cover_letter_output = gr.Textbox(label="📧 Generated Cover Letter", lines=12)
 
-    # Logic functions
     def process_resume(resume_file, job_description):
         analysis, tailored_text, _, cover_letter = analyze_resume(resume_file, job_description)
         if tailored_text and "Error" not in tailored_text:
@@ -143,17 +139,15 @@ with gr.Blocks(
         return analysis, tailored_text, None, cover_letter
 
     def load_sample():
-        return None, "Looking for a Senior Developer with Python and RAG experience."
+        return None, "We are looking for a Senior Python Developer with strong experience in building web applications using Flask and FastAPI."
 
     def clear_fields():
         return None, "", "", None, ""
 
-    # Interactivity
     analyze_btn.click(process_resume, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
     example_btn.click(load_sample, outputs=[resume_input, job_input])
     clear_btn.click(clear_fields, outputs=[resume_input, job_input, match_output, download_output, cover_letter_output])
 
-    # Footer with custom class for the CSS to target
     with gr.Row(elem_classes="footer-text"):
         gr.Markdown("Built with Groq + RAG • Educational Portfolio Project")
 
