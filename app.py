@@ -3,7 +3,7 @@ from groq import Groq
 import os
 import tempfile
 
-# Groq API Key will come from HF Spaces Secrets
+# Groq API Key from HF Spaces Secrets
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 from utils.resume_parser import extract_text_from_pdf, extract_text_from_text
@@ -28,7 +28,7 @@ def analyze_resume(resume_file, job_description):
 
         context = build_rag_context(resume_text, job_description)
 
-        # Analysis
+        # Match Analysis
         analysis_prompt = get_analysis_prompt(resume_text, job_description, context)
         analysis_response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -49,7 +49,7 @@ def analyze_resume(resume_file, job_description):
         tailored_resume = tailored_response.choices[0].message.content
 
         # Polished Cover Letter
-        cover_letter_prompt = f"""Write a professional, compelling cover letter (250-350 words) based on:
+        cover_letter_prompt = f"""Write a professional, compelling cover letter (280-350 words) based on:
 
 Resume:
 {resume_text[:2500]}
@@ -57,7 +57,11 @@ Resume:
 Job Description:
 {job_description}
 
-Make it enthusiastic, personalized, and highlight the most relevant experience."""
+Requirements:
+- Be enthusiastic and confident
+- Highlight the most relevant experience and skills
+- Make it personalized
+- End with a strong call to action"""
 
         cover_response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -74,7 +78,25 @@ Make it enthusiastic, personalized, and highlight the most relevant experience."
         return error_msg, error_msg, None, None
 
 
-with gr.Blocks(title="SmartResume AI", theme=gr.themes.Soft()) as demo:
+# ================== DARK CYBER THEME ==================
+with gr.Blocks(
+    title="SmartResume AI",
+    theme=gr.themes.Base(
+        primary_hue="emerald",
+        secondary_hue="cyan",
+        neutral_hue="slate"
+    ).set(
+        body_background_fill="#0a0f1c",
+        block_background_fill="#111827",
+        button_primary_background_fill="#10b981",
+        button_primary_background_fill_hover="#34d399",
+        input_background_fill="#1f2937",
+        border_color_primary="#10b981",
+        body_text_color="#e0f2fe",
+        heading_text_color="#67e8f9"
+    )
+) as demo:
+    
     gr.Markdown("# SmartResume AI\n**AI Resume Builder & Job Matcher with RAG**")
 
     with gr.Row():
