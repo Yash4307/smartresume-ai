@@ -81,21 +81,35 @@ Requirements:
 # ================== DARK CYBER THEME ==================
 with gr.Blocks(
     title="SmartResume AI",
-    theme=gr.themes.Base(
-        primary_hue="emerald",
-        secondary_hue="cyan",
-        neutral_hue="slate"
-    ).set(
-        body_background_fill="#0a0f1c",
-        block_background_fill="#111827",
-        button_primary_background_fill="#10b981",
-        button_primary_background_fill_hover="#34d399",
-        input_background_fill="#1f2937",
-        border_color_primary="#10b981",
-        body_text_color="#e0f2fe",
-        heading_text_color="#67e8f9"
-    )
+    theme=gr.themes.Base()
 ) as demo:
+    
+    # Custom CSS for dark cyber theme
+    gr.HTML("""
+    <style>
+        body, .gradio-container {
+            background-color: #0a0f1c !important;
+            color: #e0f2fe !important;
+        }
+        .block {
+            background-color: #111827 !important;
+            border-color: #10b981 !important;
+        }
+        h1, h2, h3 {
+            color: #67e8f9 !important;
+        }
+        .gr-button-primary {
+            background-color: #10b981 !important;
+        }
+        .gr-button-primary:hover {
+            background-color: #34d399 !important;
+        }
+        .textbox, .file {
+            background-color: #1f2937 !important;
+            color: #e0f2fe !important;
+        }
+    </style>
+    """)
     
     gr.Markdown("# SmartResume AI\n**AI Resume Builder & Job Matcher with RAG**")
 
