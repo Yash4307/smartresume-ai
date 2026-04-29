@@ -21,21 +21,18 @@ def analyze_resume(resume_file, job_description):
         
         context = build_rag_context(resume_text, job_description)
         
-        # Match Analysis
         analysis_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": get_analysis_prompt(resume_text, job_description, context)}]
         )
         analysis = analysis_res.choices[0].message.content
 
-        # Tailored Resume
         tailored_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": get_tailored_resume_prompt(resume_text, job_description)}]
         )
         tailored_resume = tailored_res.choices[0].message.content
 
-        # Cover Letter
         cover_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": f"Write a cover letter for:\n{resume_text[:1000]}"}]
@@ -46,14 +43,14 @@ def analyze_resume(resume_file, job_description):
     except Exception as e:
         return f"❌ {str(e)}", "Error", None, None
 
-# ================== THE GRADIO 5 VARIABLE OVERRIDE ==================
+# ================== THE BRUTE-FORCE CSS FIX ==================
 
 with gr.Blocks(title="SmartResume AI", theme=gr.themes.Default()) as demo:
     
     gr.HTML("""
     <style>
-        /* Force CSS Variables - Gradio 5 relies on these */
-        :root, .dark, .gradio-container {
+        /* Force dark mode colors for Gradio 5 components */
+        :root, body, .gradio-container {
             --body-background-fill: #0a0f1c !important;
             --block-background-fill: #111827 !important;
             --input-background-fill: #1f2937 !important;
@@ -61,51 +58,61 @@ with gr.Blocks(title="SmartResume AI", theme=gr.themes.Default()) as demo:
             --heading-text-color: #67e8f9 !important;
             --block-label-text-color: #67e8f9 !important;
             --border-color-primary: #f97316 !important;
+            background-color: #0a0f1c !important;
         }
 
-        /* Fix the invisible Title and Subtitle */
-        .prose h1, .prose h2, .prose h3, .prose p {
+        /* Fix Title and Subtitle visibility */
+        .prose h1, .prose h2, .prose h3, .prose p, h1, h2, h3 {
             color: #67e8f9 !important;
+            visibility: visible !important;
         }
 
-        /* Fix the Labels (Upload Resume / Job Description) */
+        /* Target the Labels (Upload Resume, Job Description, etc.) */
         .block span, label span, .block-label {
             color: #ffffff !important;
             font-weight: bold !important;
+            opacity: 1 !important;
         }
 
-        /* Fix Textbox content (currently black on dark) */
+        /* Target Textbox content and placeholder text */
         textarea, input {
             color: #ffffff !important;
             background-color: #1f2937 !important;
         }
-
-        /* High Contrast Primary Button */
-        button.primary {
-            background: #f97316 !important;
-            color: white !important;
+        
+        textarea::placeholder, input::placeholder {
+            color: #94a3b8 !important;
         }
 
-        /* Force background color of the main container */
-        .gradio-container { background-color: #0a0f1c !important; }
+        /* High-contrast buttons */
+        button.primary {
+            background-color: #f97316 !important;
+            color: white !important;
+            border: none !important;
+        }
     </style>
     """)
     
-    gr.Markdown("# SmartResume AI\n### AI Resume Builder & Job Matcher with RAG")
+    gr.Markdown("# SmartResume AI")
+    gr.Markdown("### AI Resume Builder & Job Matcher with RAG")
 
     with gr.Row():
         with gr.Column():
             resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
-            job_input = gr.Textbox(label="Paste Job Description", lines=8)
+            job_input = gr.Textbox(label="Paste Job Description", lines=8, placeholder="Paste the full job description here...")
         with gr.Column():
-            analyze_btn = gr.Button("🚀 Analyze Resume", variant="primary")
+            analyze_btn = gr.Button("🚀 Analyze & Generate Tailored Resume", variant="primary", size="large")
 
     with gr.Row():
-        match_output = gr.Textbox(label="Match Analysis", lines=10)
-        tailored_output = gr.Textbox(label="Tailored Resume", lines=10)
+        example_btn = gr.Button("Load Sample Data", variant="secondary")
+        clear_btn = gr.Button("Clear All", variant="stop")
 
-    download_output = gr.File(label="Download Resume")
-    cover_letter_output = gr.Textbox(label="📧 Cover Letter", lines=10)
+    with gr.Row():
+        match_output = gr.Textbox(label="Match Analysis & Gap Suggestions", lines=13)
+        tailored_output = gr.Textbox(label="Tailored Resume", lines=13)
+
+    download_output = gr.File(label="Download Tailored Resume (.txt)", visible=True)
+    cover_letter_output = gr.Textbox(label="📧 Generated Cover Letter", lines=12)
 
     def wrap_process(resume, jd):
         analysis, tailored, _, cover = analyze_resume(resume, jd)
@@ -116,7 +123,12 @@ with gr.Blocks(title="SmartResume AI", theme=gr.themes.Default()) as demo:
         return analysis, tailored, None, cover
 
     analyze_btn.click(wrap_process, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
-    gr.Markdown("Built with Groq • Educational Portfolio")
+    
+    example_btn.click(lambda: (None, "Sample JD: Senior Python Developer."), None, [resume_input, job_input])
+    
+    clear_btn.click(lambda: (None, "", "", None, ""), None, [resume_input, job_input, match_output, download_output, cover_letter_output])
+
+    gr.Markdown("Built with Groq + RAG • Educational Portfolio Project")
 
 if __name__ == "__main__":
     demo.launch()
