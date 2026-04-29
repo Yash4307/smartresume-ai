@@ -21,6 +21,7 @@ def analyze_resume(resume_file, job_description):
         
         context = build_rag_context(resume_text, job_description)
         
+        # Groq API Calls
         analysis_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": get_analysis_prompt(resume_text, job_description, context)}]
@@ -47,71 +48,59 @@ def analyze_resume(resume_file, job_description):
     except Exception as e:
         return f"❌ Error: {str(e)}", "", None, ""
 
-# --- THE CLEANEST UI FIX ---
-# We use 'Base' theme to stop Gradio from applying its own dark/light logic
-with gr.Blocks(title="SmartResume AI", theme=gr.themes.Base()) as demo:
+# --- UI Setup ---
+with gr.Blocks(title="SmartResume AI", theme=gr.themes.Soft(primary_hue="emerald")) as demo:
     
-    # This style block is designed to be "un-ignorable"
     gr.HTML("""
     <style>
-        /* Force a clean, professional White/Light Grey aesthetic */
+        /* FORCE LIGHT MODE COLORS */
         :root, .gradio-container, body {
-            background-color: #f8fafc !important; 
+            background-color: #ffffff !important;
             color: #1e293b !important;
         }
-
-        /* Force ALL text to be dark grey/black so it is visible on white */
         .prose h1, .prose h2, .prose h3, .prose p, span, label, .markdown-text {
             color: #0f172a !important;
         }
-
-        /* Style the input boxes so they look modern */
         textarea, input {
-            background-color: white !important;
+            background-color: #f1f5f9 !important;
             color: #0f172a !important;
             border: 1px solid #cbd5e1 !important;
         }
-
-        /* Emerald Primary Button */
         button.primary {
             background-color: #10b981 !important;
             color: white !important;
-            border: none !important;
         }
     </style>
     """)
 
     gr.Markdown("# 📄 SmartResume AI")
-    gr.Markdown("### Professional Resume Optimizer & Job Matcher")
+    gr.Markdown("### Professional Resume Optimizer")
 
     with gr.Tabs():
         with gr.TabItem("1. Inputs"):
             with gr.Row():
                 resume_input = gr.File(label="Upload Resume (PDF)")
                 job_input = gr.Textbox(label="Job Description", lines=10)
-            
             analyze_btn = gr.Button("🚀 Run Analysis", variant="primary")
-            
             with gr.Row():
                 sample_btn = gr.Button("Sample Data")
                 clear_btn = gr.Button("Clear All", variant="stop")
 
         with gr.TabItem("2. Analysis"):
-            match_output = gr.Textbox(label="Skill Gaps & Suggestions", lines=15)
+            match_output = gr.Textbox(label="Skill Gaps", lines=15)
 
         with gr.TabItem("3. Final Resume & Cover Letter"):
             with gr.Row():
                 tailored_output = gr.Textbox(label="Optimized Resume", lines=15)
                 cover_letter_output = gr.Textbox(label="Cover Letter", lines=15)
-            download_output = gr.File(label="Download Resume")
+            download_output = gr.File(label="Download")
 
-    gr.Markdown("---")
     gr.Markdown("Built with Groq + RAG Pipeline")
 
-    # Functions
     analyze_btn.click(analyze_resume, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
-    sample_btn.click(lambda: (None, "Looking for a Python Developer."), outputs=[resume_input, job_input])
+    sample_btn.click(lambda: (None, "Sample JD: Python Developer."), outputs=[resume_input, job_input])
     clear_btn.click(lambda: (None, "", "", "", None, ""), outputs=[resume_input, job_input, match_output, tailored_output, download_output, cover_letter_output])
 
 if __name__ == "__main__":
-    demo.launch()
+    # share=False is key for HF Spaces, and adding a unique header forces a refresh
+    demo.launch(show_api=False)
