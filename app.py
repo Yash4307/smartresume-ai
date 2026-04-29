@@ -20,89 +20,94 @@ def analyze_resume(resume_file, job_description):
             resume_text = extract_text_from_pdf(resume_file)
         else:
             resume_text = extract_text_from_text(resume_file)
-        if "Error" in resume_text: return f"❌ {resume_text}", "Error", None, None
+        
         context = build_rag_context(resume_text, job_description)
+        
         analysis_prompt = get_analysis_prompt(resume_text, job_description, context)
-        analysis_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            temperature=0.5,
-            max_tokens=800
-        )
-        analysis = analysis_response.choices[0].message.content
+        analysis_res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "user", "content": analysis_prompt}])
+        analysis = analysis_res.choices[0].message.content
+
         tailored_prompt = get_tailored_resume_prompt(resume_text, job_description)
-        tailored_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": tailored_prompt}],
-            temperature=0.7,
-            max_tokens=1200
-        )
-        tailored_resume = tailored_response.choices[0].message.content
-        cover_letter_prompt = f"Write a professional cover letter:\nResume: {resume_text[:1500]}\nJD: {job_description}"
-        cover_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": cover_letter_prompt}],
-            temperature=0.7,
-            max_tokens=600
-        )
-        cover_letter = cover_response.choices[0].message.content
+        tailored_res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "user", "content": tailored_prompt}])
+        tailored_resume = tailored_res.choices[0].message.content
+
+        cover_prompt = f"Write a cover letter:\nResume: {resume_text[:1000]}\nJD: {job_description}"
+        cover_res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "user", "content": cover_prompt}])
+        cover_letter = cover_res.choices[0].message.content
+
         return analysis, tailored_resume, tailored_resume, cover_letter
     except Exception as e:
         return f"❌ Error: {str(e)}", "Error", None, None
 
-# ================== THE FORCE-DARK OVERRIDE ==================
+# ================== THE "FORCE DARK" SOLUTION ==================
 
 with gr.Blocks(
     title="SmartResume AI",
-    theme=gr.themes.Base() # Use Base to prevent theme fighting
+    theme=gr.themes.Default() 
 ) as demo:
     
+    # This CSS targets the specific Gradio 5 variables that are causing the 'ghosting'
     gr.HTML("""
     <style>
-        /* Force dark mode variables at the root level */
-        :root, .gradio-container, html, body {
+        /* Force the background and primary text colors at the highest level */
+        :root, .dark, body, html, .gradio-container {
             --body-background-fill: #0a0f1c !important;
+            --background-fill-primary: #0a0f1c !important;
+            --background-fill-secondary: #111827 !important;
             --block-background-fill: #111827 !important;
             --input-background-fill: #1f2937 !important;
-            --body-text-color: #ffffff !important;
+            
+            --body-text-color: #e0f2fe !important;
             --heading-text-color: #67e8f9 !important;
             --block-label-text-color: #67e8f9 !important;
-            --border-color-primary: #10b981 !important;
+            --body-text-color-subdued: #94a3b8 !important;
+            
+            --border-color-primary: #f97316 !important;
+            --button-primary-background-fill: #f97316 !important;
+            
             background-color: #0a0f1c !important;
         }
 
-        /* Ensure text is bright and visible */
-        .prose h1, .prose h2, .prose h3, .prose p, .markdown-text {
-            color: #ffffff !important;
+        /* Fix invisible Titles */
+        h1, h2, h3, .prose h1, .prose h2, .prose h3, .prose p {
+            color: #67e8f9 !important;
         }
 
-        /* Target the specific labels that are currently black on dark */
-        label span, .block-label {
+        /* Fix invisible Labels (the most common issue in your screenshot) */
+        .block span, label span, .block-label {
             color: #67e8f9 !important;
             font-weight: bold !important;
         }
 
-        /* Button styling */
-        button.primary {
-            background: linear-gradient(90deg, #10b981, #059669) !important;
-            color: white !important;
-            border: none !important;
-        }
-
-        /* Force input text to be white */
-        textarea, input {
+        /* Fix the Input Text (currently appearing as black on dark) */
+        textarea, input, .scroll-hide {
             color: #ffffff !important;
             background-color: #1f2937 !important;
+        }
+
+        /* Primary Action Button */
+        button.primary {
+            background: linear-gradient(90deg, #f97316, #ea580c) !important;
+            color: white !important;
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3) !important;
+        }
+        
+        /* Secondary Buttons */
+        button.secondary {
+            background-color: #1f2937 !important;
+            color: white !important;
         }
     </style>
     """)
     
-    gr.Markdown("# SmartResume AI\n### AI Resume Builder & Job Matcher with RAG")
+    gr.Markdown("# SmartResume AI")
+    gr.Markdown("### AI Resume Builder & Job Matcher with RAG")
 
     with gr.Row():
         with gr.Column(scale=1):
             resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
-            job_input = gr.Textbox(label="Paste Job Description", lines=8, placeholder="Paste the full job description here...")
+            job_input = gr.Textbox(label="Paste Job Description", lines=8, placeholder="Paste JD here...")
 
         with gr.Column(scale=1):
             analyze_btn = gr.Button("🚀 Analyze & Generate Tailored Resume", variant="primary", size="large")
@@ -124,13 +129,12 @@ with gr.Blocks(
         analysis, tailored_text, _, cover_letter = analyze_resume(resume_file, job_description)
         if tailored_text and "Error" not in tailored_text:
             with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as tmp:
-                tmp.write(f"Tailored Resume\n\n{tailored_text}")
-                tmp_path = tmp.name
-            return analysis, tailored_text, tmp_path, cover_letter
+                tmp.write(tailored_text)
+                return analysis, tailored_text, tmp.name, cover_letter
         return analysis, tailored_text, None, cover_letter
 
     analyze_btn.click(process_resume, [resume_input, job_input], [match_output, tailored_output, download_output, cover_letter_output])
-    example_btn.click(lambda: (None, "Looking for a Senior Python Dev with RAG experience."), None, [resume_input, job_input])
+    example_btn.click(lambda: (None, "Sample JD: Senior Python Developer experienced in RAG."), None, [resume_input, job_input])
     clear_btn.click(lambda: (None, "", "", None, ""), None, [resume_input, job_input, match_output, download_output, cover_letter_output])
 
     gr.Markdown("Built with Groq + RAG • Educational Portfolio Project")
