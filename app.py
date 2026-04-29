@@ -74,26 +74,7 @@ Make it enthusiastic, personalized, and highlight the most relevant experience."
         return error_msg, error_msg, None, None
 
 
-with gr.Blocks(
-    title="SmartResume AI",
-    css="""
-    body {
-        background-color: #0b1220 !important;
-        color: #e5e7eb !important;
-    }
-    .gradio-container {
-        background-color: #0b1220 !important;
-    }
-    .block {
-        background-color: #111827 !important;
-        border-radius: 10px;
-    }
-    textarea, input {
-        background-color: #1f2937 !important;
-        color: white !important;
-    }
-    """
-) as demo:
+with gr.Blocks(title="SmartResume AI", theme=gr.themes.Soft()) as demo:
     gr.Markdown("# SmartResume AI\n**AI Resume Builder & Job Matcher with RAG**")
 
     with gr.Row():
