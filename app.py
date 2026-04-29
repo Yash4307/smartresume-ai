@@ -28,7 +28,6 @@ def analyze_resume(resume_file, job_description):
 
         context = build_rag_context(resume_text, job_description)
 
-        # Match Analysis
         analysis_prompt = get_analysis_prompt(resume_text, job_description, context)
         analysis_response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -38,7 +37,6 @@ def analyze_resume(resume_file, job_description):
         )
         analysis = analysis_response.choices[0].message.content
 
-        # Tailored Resume
         tailored_prompt = get_tailored_resume_prompt(resume_text, job_description)
         tailored_response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -48,7 +46,6 @@ def analyze_resume(resume_file, job_description):
         )
         tailored_resume = tailored_response.choices[0].message.content
 
-        # Polished Cover Letter
         cover_letter_prompt = f"Write a professional cover letter based on:\nResume: {resume_text[:2000]}\nJD: {job_description}"
         cover_response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -62,69 +59,57 @@ def analyze_resume(resume_file, job_description):
     except Exception as e:
         return f"❌ Error: {str(e)}", "Error", None, None
 
-# ================== GRADIO 5 DARK THEME FIX ==================
-
-# Force the __theme parameter and the .dark class
-js_func = """
-function() {
-    const url = new URL(window.location);
-    if (url.searchParams.get('__theme') !== 'dark') {
-        url.searchParams.set('__theme', 'dark');
-        window.history.replaceState({}, '', url);
-    }
-    document.documentElement.classList.add('dark');
-    document.body.classList.add('dark');
-}
-"""
+# ================== UI FIX: VISIBLE TEXT FOR WHITE THEME ==================
 
 with gr.Blocks(
     title="SmartResume AI",
-    # Gradio 5 allows specifying mode directly in many theme subclasses
-    theme=gr.themes.Base(
-        primary_hue="emerald", 
-        secondary_hue="slate",
-        neutral_hue="slate",
-    ),
-    js=js_func
+    theme=gr.themes.Soft() # Soft theme handles light mode more gracefully
 ) as demo:
     
     gr.HTML("""
     <style>
-        /* Global Background Fix */
-        :root, .dark, body, .gradio-container {
-            background-color: #0a0f1c !important;
-            --body-background-fill: #0a0f1c !important;
-            --block-background-fill: #111827 !important;
-            --input-background-fill: #1f2937 !important;
-            --border-color-primary: #10b981 !important;
-        }
-
-        /* Text and Heading Colors */
-        .prose h1, .prose h2, .prose p, .markdown-text {
-            color: #67e8f9 !important;
+        /* Force specific text elements to be dark/black so they are visible on white background */
+        
+        /* 1. Main Title and Subtitle */
+        .prose h1, .prose h2, .prose h3 {
+            color: #1a202c !important; /* Dark slate/black */
+            text-align: center;
         }
         
-        /* Input & Textbox specific overrides */
-        textarea, input {
-            background-color: #1f2937 !important;
-            color: #e0f2fe !important;
-            border: 1px solid #10b981 !important;
+        .prose p, .prose strong {
+            color: #2d3748 !important; /* Dark grey */
         }
 
-        /* Primary Button: Cyber Emerald */
-        button.primary {
-            background: linear-gradient(90deg, #10b981, #059669) !important;
-            color: white !important;
-            border: none !important;
+        /* 2. Footer Text */
+        .footer-text p {
+            color: #4a5568 !important;
+            font-weight: 500;
+        }
+
+        /* 3. Label Text for inputs */
+        label span {
+            color: #2d3748 !important;
             font-weight: bold !important;
         }
 
-        /* Footer removal */
-        footer { display: none !important; }
+        /* Keep your button looking cool - orange/green works on white too */
+        button.primary {
+            background: linear-gradient(90deg, #f97316, #ea580c) !important;
+            color: white !important;
+            border: none !important;
+        }
+        
+        /* Box borders so they don't vanish on white */
+        .block {
+            border: 1px solid #e2e8f0 !important;
+        }
     </style>
     """)
     
-    gr.Markdown("# SmartResume AI\n**AI Resume Builder & Job Matcher with RAG**")
+    # Using a container for the header to apply custom classes if needed
+    with gr.Column(elem_classes="header-section"):
+        gr.Markdown("# SmartResume AI")
+        gr.Markdown("### AI Resume Builder & Job Matcher with RAG")
 
     with gr.Row():
         with gr.Column(scale=1):
@@ -168,7 +153,9 @@ with gr.Blocks(
     example_btn.click(load_sample, outputs=[resume_input, job_input])
     clear_btn.click(clear_fields, outputs=[resume_input, job_input, match_output, download_output, cover_letter_output])
 
-    gr.Markdown("---\nBuilt with Groq + RAG • Educational Portfolio Project")
+    # Footer with custom class for the CSS to target
+    with gr.Row(elem_classes="footer-text"):
+        gr.Markdown("Built with Groq + RAG • Educational Portfolio Project")
 
 if __name__ == "__main__":
     demo.launch()
