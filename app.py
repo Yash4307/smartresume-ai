@@ -12,7 +12,7 @@ from utils.prompts import get_analysis_prompt, get_tailored_resume_prompt
 
 def analyze_resume(resume_file, job_description):
     if resume_file is None or not job_description:
-        return "❌ Missing input.", "No resume or job description provided.", None, "Error"
+        return "❌ Please upload a resume and provide a job description.", "", None, ""
     
     try:
         if hasattr(resume_file, 'name') and resume_file.name.lower().endswith('.pdf'):
@@ -39,58 +39,61 @@ def analyze_resume(resume_file, job_description):
         # 3. Cover Letter
         cover_res = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": f"Write a professional cover letter for the following resume and job description:\n\nResume: {resume_text[:1500]}\n\nJD: {job_description}"}]
+            messages=[{"role": "user", "content": f"Write a professional cover letter based on this resume and JD:\n\n{resume_text[:1500]}"}]
         )
         cover_letter = cover_res.choices[0].message.content
 
-        # Save tailored resume to a temp file for download
+        # Create download file
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as tmp:
             tmp.write(tailored_resume)
             tmp_path = tmp.name
 
         return analysis, tailored_resume, tmp_path, cover_letter
     except Exception as e:
-        return f"❌ {str(e)}", "An error occurred during generation.", None, "Error"
+        return f"❌ Error: {str(e)}", "", None, ""
 
 # --- UI Setup ---
+# We use gr.themes.Soft() which is the cleanest professional theme Gradio offers
 with gr.Blocks(title="SmartResume AI", theme=gr.themes.Soft(primary_hue="emerald")) as demo:
     
-    with gr.Row():
-        with gr.Column(scale=1):
-            gr.Markdown("# 📄 SmartResume AI")
-            gr.Markdown("### Optimize your job search with RAG-powered AI.")
-        
-    with gr.Sidebar():
-        gr.Markdown("## 🛠️ Inputs")
-        resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
-        job_input = gr.Textbox(label="Job Description", lines=10, placeholder="Paste the full job description here...")
-        
-        analyze_btn = gr.Button("🚀 Analyze & Generate", variant="primary")
-        
-        with gr.Row():
-            example_btn = gr.Button("Sample Data", variant="secondary")
-            clear_btn = gr.Button("Clear All", variant="stop")
+    gr.Markdown("# 📄 SmartResume AI")
+    gr.Markdown("### Optimize your resume and stand out to recruiters using RAG-powered AI.")
 
-    with gr.Column():
-        with gr.Tabs():
-            with gr.TabItem("📊 Match Analysis"):
-                match_output = gr.Textbox(label="Gap Analysis & Suggestions", lines=20, show_copy_button=True)
-                
-            with gr.TabItem("📝 Tailored Resume"):
-                tailored_output = gr.Textbox(label="AI-Optimized Resume", lines=20, show_copy_button=True)
-                download_output = gr.File(label="Download Resume (.txt)")
-                
-            with gr.TabItem("📧 Cover Letter"):
-                cover_letter_output = gr.Textbox(label="Generated Cover Letter", lines=20, show_copy_button=True)
+    with gr.Tabs():
+        # Step 1: Input
+        with gr.TabItem("Step 1: Upload & Job Details"):
+            with gr.Row():
+                with gr.Column():
+                    resume_input = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
+                with gr.Column():
+                    job_input = gr.Textbox(label="Job Description", lines=10, placeholder="Paste the full job description here...")
+            
+            with gr.Row():
+                analyze_btn = gr.Button("🚀 Start AI Analysis", variant="primary", size="large")
+                example_btn = gr.Button("📝 Load Sample Data", variant="secondary")
+                clear_btn = gr.Button("🗑️ Clear All", variant="stop")
 
-    # --- Footer ---
+        # Step 2: Match Results
+        with gr.TabItem("Step 2: Match Analysis"):
+            match_output = gr.Textbox(label="Skill Gaps & Suggestions", lines=20, show_copy_button=True)
+
+        # Step 3: Final Documents
+        with gr.TabItem("Step 3: Tailored Documents"):
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("#### ✨ Tailored Resume")
+                    tailored_output = gr.Textbox(label="Optimized Resume Text", lines=15, show_copy_button=True)
+                    download_output = gr.File(label="Download Resume (.txt)")
+                with gr.Column():
+                    gr.Markdown("#### 📧 Generated Cover Letter")
+                    cover_letter_output = gr.Textbox(label="Professional Cover Letter", lines=20, show_copy_button=True)
+
     gr.Markdown("---")
-    gr.Markdown("Built with **Groq + Llama 3.1** • RAG Pipeline • Educational Portfolio Project")
+    gr.Markdown("Built with **Groq + RAG** • Educational Portfolio Project")
 
-    # --- Functions ---
+    # --- Button Logic ---
     def load_sample():
-        sample_jd = "We are looking for a Senior Developer with Python, RAG, and AI integration experience."
-        return None, sample_jd
+        return None, "Looking for a Senior Python Developer with experience in AI and RAG pipelines."
 
     def clear_all():
         return None, "", "", "", None, ""
